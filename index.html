@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Data Display</title>
+  <style>
+    body {
+      font-family: Arial;
+      background: #000;
+      color: #fff;
+      margin: 0;
+      padding: 20px;
+    }
+    .container {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .item {
+      margin: 10px;
+    }
+    h1 {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Status Board</h1>
+  <div class="container" id="items"></div>
+  
+  <script>
+    // Your published CSV URL
+    const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTw-L93Nw7kf8PwVunslfqL2dX57g9bvVezU7ha0PYEao_XjEnFrIiMqtKLfqEyC-cbqa2zo9zWIVMZ/pub?output=csv';
+    
+    fetch(csvUrl)
+      .then(response => response.text())
+      .then(data => {
+        // Parse CSV
+        const rows = data.split('\n');
+        const headers = rows[0].split(',');
+        
+        // Find column indexes
+        const trackingCol = headers.indexOf('Tracking Number');
+        const activeCol = headers.indexOf('Active (Yes/Delivered)');
+        const descCol = headers.indexOf('Description');
+        
+        // Process each row (skip header)
+        for (let i = 1; i < rows.length; i++) {
+          if (rows[i].trim() === '') continue;
+          
+          const columns = rows[i].split(',');
+          const trackingNumber = columns[trackingCol].trim();
+          const isActive = columns[activeCol].trim().toLowerCase() === 'yes';
+          const description = columns[descCol] ? columns[descCol].trim() : '';
+          
+          // Only show active items
+          if (isActive) {
+            const itemDiv = document.createElement('div');
+            itemDiv.className = 'item';
+            
+            // Add description if available
+            if (description) {
+              const descEl = document.createElement('h3');
+              descEl.textContent = description;
+              itemDiv.appendChild(descEl);
+            }
+            
+            // Create widget iframe
+            const iframe = document.createElement('iframe');
+            iframe.src = `https://parcelsapp.com/tracking-widget/${trackingNumber}`;
+            iframe.width = 380;
+            iframe.height = 200;
+            iframe.frameBorder = 0;
+            itemDiv.appendChild(iframe);
+            
+            document.getElementById('items').appendChild(itemDiv);
+          }
+        }
+      })
+      .catch(error => {
+        console.error('Error loading data:', error);
+        document.getElementById('items').innerHTML = '<p>Error loading data</p>';
+      });
+  </script>
+</body>
+</html>
