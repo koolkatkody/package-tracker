@@ -30,57 +30,71 @@
   
   <script>
     // Your published CSV URL
-    const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTw-L93Nw7kf8PwVunslfqL2dX57g9bvVezU7ha0PYEao_XjEnFrIiMqtKLfqEyC-cbqa2zo9zWIVMZ/pub?output=csv';
+const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTw-L93Nw7kf8PwVunslfqL2dX57g9bvVezU7ha0PYEao_XjEnFrIiMqtKLfqEyC-cbqa2zo9zWIVMZ/pub?output=csv';
+
+fetch(csvUrl)
+  .then(response => response.text())
+  .then(data => {
+    // Parse CSV
+    const rows = data.split('\n');
+    const headers = rows[0].split(',');
     
-    fetch(csvUrl)
-      .then(response => response.text())
-      .then(data => {
-        // Parse CSV
-        const rows = data.split('\n');
-        const headers = rows[0].split(',');
+    // Find column indexes - match your actual spreadsheet headers
+    const trackingCol = headers.findIndex(h => h.trim() === 'Tracking Number');
+    const activeCol = headers.findIndex(h => h.trim() === 'Active (Yes/Delivered)');
+    const descCol = headers.findIndex(h => h.trim() === 'Description');
+    
+    if (trackingCol === -1 || activeCol === -1) {
+      throw new Error(`Required columns not found. Headers: ${headers.join(', ')}`);
+    }
+    
+    let itemsAdded = 0;
+    
+    // Process each row (skip header)
+    for (let i = 1; i < rows.length; i++) {
+      if (rows[i].trim() === '') continue;
+      
+      const columns = rows[i].split(',');
+      if (columns.length <= trackingCol || columns.length <= activeCol) continue;
+      
+      const trackingNumber = columns[trackingCol]?.trim() || '';
+      const activeStatus = columns[activeCol]?.trim() || '';
+      const isActive = activeStatus.toLowerCase() === 'yes';
+      const description = (descCol >= 0 && columns[descCol]) ? columns[descCol].trim() : '';
+      
+      // Only show active items
+      if (isActive && trackingNumber) {
+        const itemDiv = document.createElement('div');
+        itemDiv.className = 'item';
         
-        // Find column indexes
-        const trackingCol = headers.indexOf('Tracking Number');
-        const activeCol = headers.indexOf('Active (Yes/Delivered)');
-        const descCol = headers.indexOf('Description');
-        
-        // Process each row (skip header)
-        for (let i = 1; i < rows.length; i++) {
-          if (rows[i].trim() === '') continue;
-          
-          const columns = rows[i].split(',');
-          const trackingNumber = columns[trackingCol].trim();
-          const isActive = columns[activeCol].trim().toLowerCase() === 'yes';
-          const description = columns[descCol] ? columns[descCol].trim() : '';
-          
-          // Only show active items
-          if (isActive) {
-            const itemDiv = document.createElement('div');
-            itemDiv.className = 'item';
-            
-            // Add description if available
-            if (description) {
-              const descEl = document.createElement('h3');
-              descEl.textContent = description;
-              itemDiv.appendChild(descEl);
-            }
-            
-            // Create widget iframe
-            const iframe = document.createElement('iframe');
-            iframe.src = `https://parcelsapp.com/tracking-widget/${trackingNumber}`;
-            iframe.width = 380;
-            iframe.height = 200;
-            iframe.frameBorder = 0;
-            itemDiv.appendChild(iframe);
-            
-            document.getElementById('items').appendChild(itemDiv);
-          }
+        // Add description if available
+        if (description) {
+          const descEl = document.createElement('h3');
+          descEl.textContent = description;
+          itemDiv.appendChild(descEl);
         }
-      })
-      .catch(error => {
-        console.error('Error loading data:', error);
-        document.getElementById('items').innerHTML = '<p>Error loading data</p>';
-      });
+        
+        // Create widget iframe
+        const iframe = document.createElement('iframe');
+        iframe.src = `https://parcelsapp.com/tracking-widget/${trackingNumber}`;
+        iframe.width = 380;
+        iframe.height = 200;
+        iframe.frameBorder = 0;
+        itemDiv.appendChild(iframe);
+        
+        document.getElementById('items').appendChild(itemDiv);
+        itemsAdded++;
+      }
+    }
+    
+    if (itemsAdded === 0) {
+      document.getElementById('items').innerHTML = '<p>No active packages found</p>';
+    }
+  })
+  .catch(error => {
+    console.error('Error loading data:', error);
+    document.getElementById('items').innerHTML = `<p>Error loading data: ${error.message}</p>`;
+  });
   </script>
 </body>
 </html>
